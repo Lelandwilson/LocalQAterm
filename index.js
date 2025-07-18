@@ -273,6 +273,9 @@ async function startChatMode() {
     }
     
     try {
+      // Temporarily pause readline to avoid interference
+      rl.pause();
+      
       const response = await sendMessage(input);
       console.log('\n' + formatResponse(response) + '\n');
       
@@ -283,9 +286,11 @@ async function startChatMode() {
       
     } catch (error) {
       console.error(chalk.red(`Error: ${error.message}`));
+    } finally {
+      // Resume readline
+      rl.resume();
+      rl.prompt();
     }
-    
-    rl.prompt();
   });
   
   rl.on('close', async () => {
