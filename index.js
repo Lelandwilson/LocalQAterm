@@ -37,7 +37,7 @@ let isConnected = false;
 
 // Display logo
 function displayLogo() {
-  const logo = figlet.textSync('QAterm', { font: 'Standard' });
+  const logo = figlet.textSync('BF-QAterm', { font: 'Standard' });
   const gradientLogo = gradient.pastel.multiline(logo);
   console.log(gradientLogo);
   console.log(chalk.blue('Local Phind-34B Coding Assistant\n'));
