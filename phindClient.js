@@ -21,6 +21,9 @@ class PhindClient extends EventEmitter {
     this.context = [];
     this.tokenizer = null;
     this.currentTokenCount = 0;
+    this.responsePromise = null;
+    this.responseResolve = null;
+    this.responseReject = null;
   }
 
   // Estimate token count (rough approximation)
@@ -55,10 +58,8 @@ class PhindClient extends EventEmitter {
     return new Promise((resolve, reject) => {
       const args = [
         '-m', this.config.modelPath,
-        '--n-gpu-layers', this.config.gpuLayers.toString(),
-        '--ctx-size', this.config.contextSize.toString(),
-        '--temp', this.config.temperature.toString(),
-        '--repeat-penalty', '1.1'
+        '-ngl', this.config.gpuLayers.toString(),
+        '-c', this.config.contextSize.toString()
       ];
 
       this.process = spawn(this.config.llamaPath, args, {
@@ -67,12 +68,21 @@ class PhindClient extends EventEmitter {
 
       let buffer = '';
       let isReady = false;
+      let stderrBuffer = '';
 
       this.process.stdout.on('data', (data) => {
-        buffer += data.toString();
+        const chunk = data.toString();
+        buffer += chunk;
         
-        // Check if llama-simple-chat is ready
-        if (!isReady && buffer.includes('llama_simple_chat')) {
+        // Check for various ready indicators
+        if (!isReady && (
+          buffer.includes('llama_simple_chat') || 
+          buffer.includes('>') ||
+          buffer.includes('User:') ||
+          buffer.includes('Assistant:') ||
+          buffer.includes('main:') ||
+          buffer.includes('ggml')
+        )) {
           isReady = true;
           this.isConnected = true;
           this.emit('ready');
@@ -81,31 +91,42 @@ class PhindClient extends EventEmitter {
       });
 
       this.process.stderr.on('data', (data) => {
-        console.error('Phind stderr:', data.toString());
+        const chunk = data.toString();
+        stderrBuffer += chunk;
+        // Only log stderr if it's not just dots (loading indicators)
+        if (!chunk.match(/^\.+$/)) {
+          console.error('STDERR:', chunk);
+        }
       });
 
       this.process.on('error', (error) => {
+        console.error('Process error:', error);
         this.isConnected = false;
         reject(error);
       });
 
       this.process.on('close', (code) => {
+        console.error(`Process closed with code: ${code}`);
         this.isConnected = false;
         this.emit('disconnected', code);
       });
 
-      // Timeout after 30 seconds
+      // Timeout after 60 seconds
       setTimeout(() => {
         if (!isReady) {
           reject(new Error('Phind connection timeout'));
         }
-      }, 30000);
+      }, 60000);
     });
   }
 
   async sendMessage(message, options = {}) {
     if (!this.isConnected || !this.process) {
       throw new Error('Phind client not connected');
+    }
+
+    if (this.responsePromise) {
+      throw new Error('Already waiting for a response');
     }
 
     // Check context limits
@@ -119,12 +140,19 @@ class PhindClient extends EventEmitter {
     }
 
     return new Promise((resolve, reject) => {
+      this.responsePromise = { resolve, reject };
+      this.responseResolve = resolve;
+      this.responseReject = reject;
+      
       let responseBuffer = '';
       let isComplete = false;
       const timeout = options.timeout || 60000;
 
       const timeoutId = setTimeout(() => {
         if (!isComplete) {
+          this.responsePromise = null;
+          this.responseResolve = null;
+          this.responseReject = null;
           reject(new Error('Response timeout'));
         }
       }, timeout);
@@ -134,11 +162,15 @@ class PhindClient extends EventEmitter {
         responseBuffer += chunk;
 
         // Check for completion patterns
-        if (chunk.includes('llama_simple_chat') || 
+        if (chunk.includes('<|im_end|>') || 
             chunk.includes('>') || 
-            chunk.includes('User:')) {
+            chunk.includes('User:') ||
+            chunk.includes('Assistant:')) {
           isComplete = true;
           clearTimeout(timeoutId);
+          
+          // Remove the data handler
+          this.process.stdout.removeListener('data', dataHandler);
           
           // Clean the response
           const cleanedResponse = this.cleanResponse(responseBuffer);
@@ -146,14 +178,26 @@ class PhindClient extends EventEmitter {
           // Update token count
           this.currentTokenCount += this.estimateTokens(message) + this.estimateTokens(cleanedResponse);
           
+          // Clear response state
+          this.responsePromise = null;
+          this.responseResolve = null;
+          this.responseReject = null;
+          
           resolve(cleanedResponse);
         }
       };
 
-      this.process.stdout.once('data', dataHandler);
+      this.process.stdout.on('data', dataHandler);
 
-      // Send the message
-      this.process.stdin.write(message + '\n');
+      // Send the message with error handling
+      try {
+        this.process.stdin.write(message + '\n');
+      } catch (error) {
+        this.responsePromise = null;
+        this.responseResolve = null;
+        this.responseReject = null;
+        reject(new Error(`Failed to send message: ${error.message}`));
+      }
     });
   }
 
@@ -166,6 +210,7 @@ class PhindClient extends EventEmitter {
       .replace(/llama_simple_chat.*?>/g, '')
       .replace(/User:.*?>/g, '')
       .replace(/Assistant:.*?>/g, '')
+      .replace(/<\|im_end\|>/g, '') // Remove end markers
       .trim();
 
     // Remove any trailing system messages
@@ -193,6 +238,9 @@ class PhindClient extends EventEmitter {
       this.process = null;
     }
     this.isConnected = false;
+    this.responsePromise = null;
+    this.responseResolve = null;
+    this.responseReject = null;
   }
 
   // Context management
