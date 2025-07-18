@@ -189,15 +189,8 @@ class PhindClient extends EventEmitter {
 
       this.process.stdout.on('data', dataHandler);
 
-      // Send the message with error handling
-      try {
-        this.process.stdin.write(message + '\n');
-      } catch (error) {
-        this.responsePromise = null;
-        this.responseResolve = null;
-        this.responseReject = null;
-        reject(new Error(`Failed to send message: ${error.message}`));
-      }
+      // Send the message
+      this.process.stdin.write(message + '\n');
     });
   }
 
