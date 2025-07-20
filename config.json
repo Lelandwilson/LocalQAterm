@@ -8,6 +8,12 @@
     "maxTokens": 1024,
     "repeatPenalty": 1.1
   },
+  "server": {
+    "enabled": true,
+    "socketPath": "/tmp/qa-model-server.sock",
+    "maxConcurrentUsers": 10,
+    "autoStart": false
+  },
   "interface": {
     "maxContextMessages": 30,
     "showTimestamps": false,
