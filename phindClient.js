@@ -15,9 +15,9 @@ class PhindClient extends EventEmitter {
       maxTokens: config.maxTokens || 2048,
       ...config
     };
-    console.log("Model: " + modelPath);
-    console.log("Llama interface: " + llamaPath);
-    console.log("Context window: " + contextSize);
+    console.log("Model: " + this.config.modelPath);
+    console.log("Llama interface: " + this.config.llamaPath);
+    console.log("Context window: " + this.config.contextSize);
 
 
     this.process = null;
