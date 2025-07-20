@@ -7,15 +7,19 @@ class PhindClient extends EventEmitter {
   constructor(config = {}) {
     super();
     this.config = {
-      modelPath: config.modelPath || '~/llama.cpp/models/phind-codellama-34b-v2.Q4_K_M.gguf',
-      llamaPath: config.llamaPath || '~/llama.cpp/build/bin/llama-simple-chat',
+      modelPath: config.modelPath || "/home/phind-container/models/phind-codellama-34b-v2.Q4_K_M.gguf",
+      llamaPath: config.llamaPath || "/home/llama.cpp/build/bin/llama-simple-chat",
       gpuLayers: config.gpuLayers || 99,
       contextSize: config.contextSize || 8192,
       temperature: config.temperature || 0.7,
       maxTokens: config.maxTokens || 2048,
       ...config
     };
-    
+    console.log("Model: " + modelPath);
+    console.log("Llama interface: " + llamaPath);
+    console.log("Context window: " + contextSize);
+
+
     this.process = null;
     this.isConnected = false;
     this.context = [];

@@ -1,6 +1,6 @@
 {
   "phind": {
-    "modelPath": "/root/llama.cpp/models/phind-codellama-34b-v2.Q4_K_M.gguf",
+    "modelPath": "/home/phind-container/models/phind-codellama-34b-v2.Q4_K_M.gguf",
     "llamaPath": "/root/llama.cpp/build/bin/llama-simple-chat",
     "gpuLayers": 99,
     "contextSize": 16384,
