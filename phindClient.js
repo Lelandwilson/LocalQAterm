@@ -15,7 +15,7 @@ class PhindClient extends EventEmitter {
       maxTokens: config.maxTokens || 2048,
       ...config
     };
-    console.log("Model: " + this.config.modelPath);
+    console.log("\nModel: " + this.config.modelPath);
     console.log("Llama interface: " + this.config.llamaPath);
     console.log("Context window: " + this.config.contextSize);
 
@@ -66,6 +66,8 @@ class PhindClient extends EventEmitter {
         '-c', this.config.contextSize.toString()
       ];
 
+      console.log('Executing command:', this.config.llamaPath, args.join(' '));
+
       this.process = spawn(this.config.llamaPath, args, {
         stdio: ['pipe', 'pipe', 'pipe']
       });
@@ -78,6 +80,9 @@ class PhindClient extends EventEmitter {
         const chunk = data.toString();
         buffer += chunk;
         
+        // Debug: log what we're receiving
+        console.log('STDOUT chunk:', JSON.stringify(chunk));
+        
         // Check for various ready indicators
         if (!isReady && (
           buffer.includes('llama_simple_chat') || 
@@ -85,7 +90,11 @@ class PhindClient extends EventEmitter {
           buffer.includes('User:') ||
           buffer.includes('Assistant:') ||
           buffer.includes('main:') ||
-          buffer.includes('ggml')
+          buffer.includes('ggml') ||
+          buffer.includes('model loaded') ||
+          buffer.includes('ready') ||
+          buffer.includes('prompt:') ||
+          buffer.includes('system:')
         )) {
           isReady = true;
           this.isConnected = true;
@@ -97,10 +106,8 @@ class PhindClient extends EventEmitter {
       this.process.stderr.on('data', (data) => {
         const chunk = data.toString();
         stderrBuffer += chunk;
-        // Only log stderr if it's not just dots (loading indicators)
-        if (!chunk.match(/^\.+$/)) {
-          console.error('STDERR:', chunk);
-        }
+        // Log all stderr for debugging
+        console.error('STDERR:', JSON.stringify(chunk));
       });
 
       this.process.on('error', (error) => {
