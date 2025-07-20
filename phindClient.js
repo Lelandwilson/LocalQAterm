@@ -15,9 +15,7 @@ class PhindClient extends EventEmitter {
       maxTokens: config.maxTokens || 2048,
       ...config
     };
-    console.log("\nModel: " + this.config.modelPath);
-    console.log("Llama interface: " + this.config.llamaPath);
-    console.log("Context window: " + this.config.contextSize);
+    // Connection info logged during startup
 
 
     this.process = null;
@@ -66,8 +64,6 @@ class PhindClient extends EventEmitter {
         '-c', this.config.contextSize.toString()
       ];
 
-      console.log('Executing command:', this.config.llamaPath, args.join(' '));
-
       this.process = spawn(this.config.llamaPath, args, {
         stdio: ['pipe', 'pipe', 'pipe']
       });
@@ -79,9 +75,6 @@ class PhindClient extends EventEmitter {
       this.process.stdout.on('data', (data) => {
         const chunk = data.toString();
         buffer += chunk;
-        
-        // Debug: log what we're receiving
-        console.log('STDOUT chunk:', JSON.stringify(chunk));
         
         // Check for various ready indicators
         if (!isReady && (
@@ -106,8 +99,10 @@ class PhindClient extends EventEmitter {
       this.process.stderr.on('data', (data) => {
         const chunk = data.toString();
         stderrBuffer += chunk;
-        // Log all stderr for debugging
-        console.error('STDERR:', JSON.stringify(chunk));
+        // Only log stderr if it's not just dots (loading indicators)
+        if (!chunk.match(/^\.+$/)) {
+          console.error('STDERR:', chunk);
+        }
       });
 
       this.process.on('error', (error) => {
