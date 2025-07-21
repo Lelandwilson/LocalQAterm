@@ -26,6 +26,7 @@ class PhindClient extends EventEmitter {
     this.responsePromise = null;
     this.responseResolve = null;
     this.responseReject = null;
+    this.hasSentSystemPrompt = false;
   }
 
   // Estimate token count (rough approximation)
@@ -117,12 +118,12 @@ class PhindClient extends EventEmitter {
         this.emit('disconnected', code);
       });
 
-      // Timeout after 60 seconds
+      // Timeout after 120 seconds (model loading can take time)
       setTimeout(() => {
         if (!isReady) {
           reject(new Error('Phind connection timeout'));
         }
-      }, 60000);
+      }, 120000);
     });
   }
 
@@ -152,7 +153,7 @@ class PhindClient extends EventEmitter {
       
       let responseBuffer = '';
       let isComplete = false;
-      const timeout = options.timeout || 60000;
+      const timeout = options.timeout || 120000; // Increased timeout for longer responses
 
       const timeoutId = setTimeout(() => {
         if (!isComplete) {
@@ -195,7 +196,34 @@ class PhindClient extends EventEmitter {
 
       this.process.stdout.on('data', dataHandler);
 
-      // Send the message
+      // Send the message with system prompt for first message
+      if (!this.hasSentSystemPrompt) {
+        const systemPrompt = `<|im_start|>system
+You are an expert coding assistant with deep knowledge of software development, programming languages, frameworks, and best practices. Your role is to:
+
+1. **Provide comprehensive, detailed responses** - Always give thorough explanations, complete code examples, and step-by-step guidance
+2. **Write production-ready code** - Include proper error handling, documentation, and best practices
+3. **Explain your reasoning** - Always explain why you're making specific choices and what alternatives exist
+4. **Consider multiple approaches** - Present different solutions when appropriate
+5. **Include practical examples** - Provide working code examples that can be immediately used
+6. **Address edge cases** - Consider error scenarios, performance implications, and security concerns
+7. **Follow coding standards** - Use consistent formatting, naming conventions, and documentation
+8. **Be thorough** - Don't cut corners; provide complete, well-thought-out solutions
+
+When writing code:
+- Include proper imports and dependencies
+- Add comprehensive comments explaining complex logic
+- Consider performance and scalability
+- Include error handling and validation
+- Follow language-specific best practices
+- Provide both the solution and explanation of how it works
+
+Always aim to be helpful, thorough, and educational in your responses.
+<|im_end|>`;
+        this.process.stdin.write(systemPrompt + '\n');
+        this.hasSentSystemPrompt = true;
+      }
+      
       this.process.stdin.write(message + '\n');
     });
   }
@@ -210,6 +238,7 @@ class PhindClient extends EventEmitter {
       .replace(/User:.*?>/g, '')
       .replace(/Assistant:.*?>/g, '')
       .replace(/<\|im_end\|>/g, '') // Remove end markers
+      .replace(/^You are an expert coding assistant.*?Always aim to be helpful, thorough, and educational in your responses\./gs, '') // Remove system prompt content
       .trim();
 
     // Remove any trailing system messages
@@ -259,6 +288,7 @@ class PhindClient extends EventEmitter {
   clearContext() {
     this.context = [];
     this.currentTokenCount = 0;
+    this.hasSentSystemPrompt = false; // Reset system prompt for fresh start
   }
 
   // Get context usage information

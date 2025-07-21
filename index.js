@@ -122,7 +122,7 @@ async function connectToPhind() {
   } catch (error) {
     spinner.fail(`Failed to connect: ${error.message}`);
     console.error(chalk.red('Make sure Phind-34B is running on your cloud VM'));
-    console.error(chalk.gray('Expected path: ~/llama.cpp/build/bin/llama-simple-chat'));
+    console.error(chalk.gray(`Expected path: ${config.phind.llamaPath}`));
     process.exit(1);
   }
 }
@@ -209,6 +209,8 @@ async function processSpecialCommand(command) {
       console.log(chalk.gray(`Model: ${config.phind.modelPath}`));
       console.log(chalk.gray(`Context size: ${config.phind.contextSize}`));
       console.log(chalk.gray(`Max tokens: ${config.phind.maxTokens}`));
+      console.log(chalk.gray(`Temperature: ${config.phind.temperature}`));
+      console.log(chalk.gray(`Repeat penalty: ${config.phind.repeatPenalty}`));
       console.log(chalk.gray(`History: ${conversationHistory.length} messages`));
       console.log('');
       break;
@@ -252,6 +254,17 @@ async function startChatMode() {
   });
   
   console.log(chalk.blue('\nType your questions or code requests. Use \\help for commands.\n'));
+  
+  // Send initial prompt to set the tone for comprehensive responses
+  if (conversationHistory.length === 0) {
+    try {
+      const welcomeMessage = "Hello! I'm your expert coding assistant. I'm here to provide comprehensive, detailed responses with complete code examples, thorough explanations, and best practices. Please ask me any coding questions, and I'll give you detailed, production-ready solutions with explanations.";
+      await sendMessage(welcomeMessage);
+      console.log(chalk.green('✅ Ready for comprehensive coding assistance!\n'));
+    } catch (error) {
+      console.error(chalk.red(`Error during initialisation: ${error.message}`));
+    }
+  }
   
   rl.prompt();
   

@@ -1,0 +1,73 @@
+#!/bin/bash
+set -e
+
+echo "🔧 Installing missing apt packages..."
+apt update && apt install -y \
+  sudo build-essential git curl wget unzip nano htop python3 python3-pip software-properties-common
+
+echo "🔍 Checking CMake..."
+if ! command -v cmake &> /dev/null || [[ "$(cmake --version | head -n1)" != *"3.27.9"* ]]; then
+    echo "Re-linking cmake to /home/cmake-3.27.9/bin/cmake"
+    ln -sf /home/cmake-3.27.9/bin/cmake /usr/bin/cmake
+else
+    echo "✅ CMake is already set up"
+fi
+
+echo "🔍 Checking Node.js..."
+if ! command -v node &> /dev/null; then
+    echo "🔗 Node.js not found — trying to source nvm and link..."
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+    NODE_BIN="$(find $HOME/.nvm/versions/node/ -type f -name node | grep bin/node | head -n1 | xargs dirname)"
+    if [ -n "$NODE_BIN" ]; then
+        ln -sf "$NODE_BIN/node" /usr/bin/node
+        ln -sf "$NODE_BIN/npm" /usr/bin/npm
+        echo "✅ Linked node and npm from NVM"
+    else
+        echo "❌ Node not found under ~/.nvm — you may need to reinstall via nvm"
+    fi
+else
+    echo "✅ Node.js is already set up: $(node -v)"
+fi
+
+echo "🔍 Checking CUDA runtime libraries..."
+if [ ! -f "/usr/local/cuda/targets/x86_64-linux/lib/libcudart.so.12" ] || [ ! -f "/usr/local/cuda/targets/x86_64-linux/lib/libcublas.so.12" ]; then
+    echo "🔧 Installing CUDA runtime libraries..."
+    
+    # Download and install NVIDIA CUDA repository keyring
+    if [ ! -f "/etc/apt/sources.list.d/cuda.list" ]; then
+        echo "📥 Adding NVIDIA CUDA repository..."
+        wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb
+        dpkg -i cuda-keyring_1.0-1_all.deb
+        rm cuda-keyring_1.0-1_all.deb
+        apt update
+    fi
+    
+    # Install CUDA 12.8 runtime (compatible with CUDA 12.7 drivers)
+    echo "📦 Installing CUDA 12.8 runtime libraries..."
+    apt install -y cuda-runtime-12-8
+    
+    echo "✅ CUDA runtime libraries installed"
+else
+    echo "✅ CUDA runtime libraries are already installed"
+fi
+
+echo "📌 Ensuring helpful aliases are set in ~/.bashrc..."
+
+add_alias_if_missing() {
+  local ALIAS_CMD="$1"
+  local ALIAS_NAME=$(echo "$ALIAS_CMD" | cut -d= -f1 | awk '{print $2}')
+  if ! grep -q "$ALIAS_NAME=" ~/.bashrc; then
+    echo "$ALIAS_CMD" >> ~/.bashrc
+    echo "✅ Added alias: $ALIAS_CMD"
+  else
+    echo "ℹ️ Alias '$ALIAS_NAME' already exists in ~/.bashrc"
+  fi
+}
+
+add_alias_if_missing "alias cls=clear"
+add_alias_if_missing "alias qa=\"node /home/LocalQAterm/index.js\""
+
+echo "✅ Bootstrap complete."
