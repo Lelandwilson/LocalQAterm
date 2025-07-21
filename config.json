@@ -1,12 +1,14 @@
 {
   "phind": {
     "modelPath": "/home/phind-container/models/phind-codellama-34b-v2.Q4_K_M.gguf",
-    "llamaPath": "/home/llama.cpp/build/bin/llama-simple-chat",
+    "vllmPath": "vllm",
     "gpuLayers": 99,
     "contextSize": 16384,
     "temperature": 0.7,
     "maxTokens": 1024,
-    "repeatPenalty": 1.1
+    "repeatPenalty": 1.1,
+    "maxConcurrentRequests": 10,
+    "tensorParallelSize": 1
   },
   "server": {
     "enabled": true,

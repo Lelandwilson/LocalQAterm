@@ -6,7 +6,7 @@ class PhindSocketClient extends EventEmitter {
   constructor(config = {}) {
     super();
     this.config = {
-      socketPath: config.socketPath || "/tmp/qa-model-server.sock",
+      socketPath: config.socketPath || "/tmp/qa-vllm-server.sock",
       userId: config.userId || process.getuid(),
       username: config.username || process.env.USER || 'unknown',
       ...config

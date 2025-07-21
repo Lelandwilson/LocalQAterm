@@ -17,6 +17,7 @@ import ora from 'ora';
 import readline from 'readline';
 import PhindClient from './phindClient.js';
 import PhindSocketClient from './phindSocketClient.js';
+import VLLMServer from './vllmServer.js';
 
 // Setup __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -102,7 +103,7 @@ function saveConversationHistory() {
 // Check if model server is running
 async function checkModelServer() {
   const { existsSync } = await import('fs');
-  return existsSync(config.server.socketPath);
+  return existsSync(config.server.socketPath) || existsSync("/tmp/qa-vllm-server.sock");
 }
 
 // Connect to Phind (supports both direct and socket modes)
@@ -119,7 +120,7 @@ async function connectToPhind() {
       spinner.text = 'Connecting to shared model server...';
       
       phindClient = new PhindSocketClient({
-        socketPath: config.server.socketPath,
+        socketPath: config.server.socketPath || "/tmp/qa-vllm-server.sock",
         userId: process.getuid(),
         username: process.env.USER || 'unknown'
       });
