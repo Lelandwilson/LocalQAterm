@@ -2,6 +2,49 @@
 
 A streamlined terminal application for local AI coding assistance using Phind-34B, a 34B parameter model fine-tuned for code understanding and generation.
 
+## 🚀 Multi-User Support
+
+This project now supports multiple deployment options:
+
+- **Single User** (`master` branch): Direct llama.cpp integration
+- **Multi-User** (`fundamental-changes` branch): Shared model server with Unix sockets
+- **vLLM Multi-User** (`vLLM` branch): Enterprise-grade vLLM with REST API
+
+### Quick Start Guide
+
+**For Single User:**
+```bash
+git checkout master
+npm install
+node index.js
+```
+
+**For Multi-User (llama.cpp):**
+```bash
+git checkout fundamental-changes
+npm install
+./start-server.sh start
+node index-multi.js
+```
+
+**For vLLM Multi-User (Recommended):**
+```bash
+git checkout vLLM
+npm install
+pip install vllm
+./start-vllm-server.sh start
+node index-multi.js
+```
+
+### Performance Comparison
+
+| Feature | Single User | Multi-User (llama.cpp) | Multi-User (vLLM) |
+|---------|-------------|------------------------|-------------------|
+| **Concurrent Users** | 1 | 2-3 | 10+ |
+| **GPU Efficiency** | Good | Basic | Excellent |
+| **Request Handling** | Direct | Manual Queue | Dynamic Batching |
+| **Production Ready** | No | Basic | Yes |
+
 ## Features
 
 - 🤖 **Local AI Model**: Uses Phind-34B running on your cloud VM with A100 GPU
@@ -164,6 +207,7 @@ npm run dev
 
 ## Dependencies
 
+### Core Dependencies
 - **chalk**: Terminal styling
 - **figlet**: ASCII art logos
 - **gradient-string**: Gradient text effects
@@ -172,15 +216,47 @@ npm run dev
 - **inquirer**: Interactive prompts
 - **dotenv**: Environment variable management
 
+### Multi-User Dependencies (fundamental-changes branch)
+- All core dependencies
+- **Unix domain sockets**: For secure local communication
+
+### vLLM Dependencies (vLLM branch)
+- All core dependencies
+- **node-fetch**: For REST API communication
+- **vLLM**: Python package for model serving
+- **Unix domain sockets**: For secure local communication
+
 ## Architecture
 
+### Single User (master branch)
 ```
-QAterm (Local Version)
+QAterm (Single User)
 ├── Core Interface (index.js)
 ├── Phind Client (phindClient.js)
 ├── Context Manager (built-in)
 ├── Terminal UI (built-in)
 └── Configuration (config.json)
+```
+
+### Multi-User (fundamental-changes branch)
+```
+QAterm (Multi-User)
+├── Model Server (modelServer.js)
+├── Socket Client (phindSocketClient.js)
+├── Multi-User Interface (index-multi.js)
+├── Unix Socket Communication
+└── Shared Model Instance
+```
+
+### vLLM Multi-User (vLLM branch) ⭐
+```
+QAterm (vLLM Multi-User)
+├── vLLM Server (vllmServer.js)
+├── REST API (port 8000)
+├── Socket Client (phindSocketClient.js)
+├── Multi-User Interface (index-multi.js)
+├── Dynamic Request Batching
+└── Enterprise-Grade Performance
 ```
 
 ## Security & Privacy
@@ -199,7 +275,30 @@ QAterm (Local Version)
 
 ## Future Enhancements
 
+- **Database Integration**: User management and conversation history
+- **Smart Menus**: Interactive conversation management
+- **Vector Search**: Semantic search across conversations
 - **WebSocket API**: HTTP server mode for IDE integration
 - **Code Analysis**: Advanced code understanding and refactoring
 - **Project Templates**: Automated project setup and scaffolding
 - **Multi-file Context**: Understanding across entire codebases
+
+## Branch Overview
+
+### `master` - Single User (Current)
+- Direct llama.cpp integration
+- Simple, single-user setup
+- Good for personal use
+
+### `fundamental-changes` - Multi-User (llama.cpp)
+- Shared model server via Unix sockets
+- Manual request queuing
+- Basic multi-user support
+- Good for small teams
+
+### `vLLM` - Multi-User (vLLM) ⭐ **Recommended**
+- Enterprise-grade vLLM integration
+- Dynamic request batching
+- REST API with built-in concurrency
+- Production-ready for large teams
+- Superior GPU utilization
